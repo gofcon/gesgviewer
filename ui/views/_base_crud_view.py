@@ -131,6 +131,8 @@ class BaseCrudView(BaseListView):
             return
         ok = err = 0
         errors: list[str] = []
+        # 수정 업데이트에서 PK 키 비교에 사용 (루프 외부에서 한 번만 계산)
+        pk_keys = {key for key, _ in self.HEADERS} - self.EDITABLE_KEYS
         # 삭제 먼저 (PK 충돌 방지)
         for row in pending['delete']:
             try:
@@ -148,7 +150,6 @@ class BaseCrudView(BaseListView):
                 err += 1
                 errors.append(f"추가 실패: {exc}")
         # 수정 업데이트 — PK 변경 시 delete+insert 처리
-        pk_keys = {key for key, _ in self.HEADERS} - self.EDITABLE_KEYS
         for item in pending['update']:
             data     = item['data']
             original = item['original']
@@ -172,7 +173,8 @@ class BaseCrudView(BaseListView):
             QMessageBox.warning(self, "저장", msg)
         else:
             QMessageBox.information(self, "저장", msg)
-        self._load_data(self.pager._current)
+        if ok > 0:
+            self._load_data(self.pager.current_page)
 
     # ── Import (즉시 DB 저장 유지) ──────────────────────────────────
     def _on_import(self) -> None:

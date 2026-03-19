@@ -3,7 +3,14 @@
 jqGrid → QTableView + EsgTableModel 대응
 """
 from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex, pyqtSignal
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QStyledItemDelegate, QComboBox
+
+
+class RowState:
+    """행 상태 상수 — 마법 문자열 대신 이 클래스를 사용."""
+    NEW      = 'new'
+    MODIFIED = 'modified'
 
 
 class EsgTableModel(QAbstractTableModel):
@@ -97,10 +104,10 @@ class EsgEditableTableModel(EsgTableModel):
     EsgTableModel 확장 — 인라인 편집 + 배치 저장 지원.
 
     행 상태:
-        'new'      — 추가/복제됨 (초록), DB 미반영, 전체 컬럼 편집 가능
-        'modified' — 인라인 수정됨 (주황), DB 미반영
-        'deleted'  — 삭제 예정 (빨강), 저장 시 DB DELETE
-        없음       — 변경 없음
+        RowState.NEW      — 추가/복제됨 (초록), DB 미반영, 전체 컬럼 편집 가능
+        RowState.MODIFIED — 인라인 수정됨 (주황), DB 미반영
+        'deleted'         — 삭제 예정 (빨강), 저장 시 DB DELETE
+        없음              — 변경 없음
 
     배치 저장:
         get_pending() → {'insert': [...], 'update': [...], 'delete': [...]}
@@ -108,8 +115,8 @@ class EsgEditableTableModel(EsgTableModel):
     """
 
     _STATE_COLORS = {
-        'new':      '#DCFCE7',   # 연한 초록
-        'modified': '#FED7AA',   # 연한 주황
+        RowState.NEW:      '#DCFCE7',   # 연한 초록
+        RowState.MODIFIED: '#FED7AA',   # 연한 주황
     }
 
     def __init__(self, rows: list[dict], headers: list[tuple],
@@ -119,7 +126,6 @@ class EsgEditableTableModel(EsgTableModel):
         self._row_states: dict[int, str]   = {}   # {row_idx: 'new'|'modified'}
         self._row_originals: dict[int, dict] = {} # 'modified' 행 원본 (PK 변경 감지용)
         self._pending_deletes: list[dict]  = []   # 삭제 예정 행 (그리드에서 즉시 제거됨)
-        self._extra_deletions: list[dict]  = []   # PK 변경으로 인한 추가 삭제 목록
 
     # ── load: 상태 초기화 ───────────────────────────────────────────
     def load(self, rows: list[dict], headers: list[tuple] | None = None) -> None:
@@ -130,7 +136,6 @@ class EsgEditableTableModel(EsgTableModel):
         self._row_states.clear()
         self._row_originals.clear()
         self._pending_deletes.clear()
-        self._extra_deletions.clear()
         self.endResetModel()
 
     # ── flags: 모든 컬럼 편집 가능 (배치 저장 방식) ─────────────────
@@ -153,7 +158,6 @@ class EsgEditableTableModel(EsgTableModel):
             return "" if val is None else val
 
         if role == Qt.ItemDataRole.BackgroundRole:
-            from PyQt6.QtGui import QColor
             if state in self._STATE_COLORS:
                 return QColor(self._STATE_COLORS[state])
             if key in self._editable:
@@ -161,8 +165,8 @@ class EsgEditableTableModel(EsgTableModel):
             return None
 
         if role == Qt.ItemDataRole.ToolTipRole:
-            if state == 'new':      return "신규 행 — 💾 저장 버튼으로 DB에 반영"
-            if state == 'modified': return "수정됨 — 💾 저장 버튼으로 DB에 반영"
+            if state == RowState.NEW:      return "신규 행 — 💾 저장 버튼으로 DB에 반영"
+            if state == RowState.MODIFIED: return "수정됨 — 💾 저장 버튼으로 DB에 반영"
             if key in self._editable:
                 return "더블클릭하여 편집"
             return None
@@ -177,17 +181,17 @@ class EsgEditableTableModel(EsgTableModel):
         row_idx = index.row()
         row = self._rows[row_idx]
         key = self._headers[index.column()][0]
-        # 원본 보존 (처음 수정 시 — 'new' 행은 원본이 없으므로 제외)
-        if self._row_states.get(row_idx, '') not in ('new', 'modified'):
+        # 원본 보존 (처음 수정 시 — RowState.NEW 행은 원본이 없으므로 제외)
+        if self._row_states.get(row_idx, '') not in (RowState.NEW, RowState.MODIFIED):
             self._row_originals[row_idx] = dict(row)
-            self._row_states[row_idx] = 'modified'
+            self._row_states[row_idx] = RowState.MODIFIED
         row[key] = value
         self.dataChanged.emit(index, index, [role])
         return True
 
     # ── 신규 행 삽입 ────────────────────────────────────────────────
     def insert_new_row(self, data: dict, after_row: int = -1) -> int:
-        """새 행을 삽입하고 state='new'로 표시. 삽입된 source 인덱스 반환."""
+        """새 행을 삽입하고 state=RowState.NEW로 표시. 삽입된 source 인덱스 반환."""
         pos = len(self._rows) if after_row < 0 else after_row + 1
         self.beginInsertRows(QModelIndex(), pos, pos)
         self._rows.insert(pos, dict(data))
@@ -196,14 +200,14 @@ class EsgEditableTableModel(EsgTableModel):
                                 for i, s in self._row_states.items()}
         self._row_originals = {(i+1 if i >= pos else i): d
                                 for i, d in self._row_originals.items()}
-        self._row_states[pos] = 'new'
+        self._row_states[pos] = RowState.NEW
         self.endInsertRows()
         return pos
 
     # ── 삭제 — 그리드에서 즉시 제거 ────────────────────────────────
     def mark_deleted(self, row_index: int) -> None:
-        """'new' 행은 단순 제거. 기존 행은 pending_deletes에 저장 후 즉시 제거."""
-        if self._row_states.get(row_index) != 'new':
+        """RowState.NEW 행은 단순 제거. 기존 행은 pending_deletes에 저장 후 즉시 제거."""
+        if self._row_states.get(row_index) != RowState.NEW:
             # 원본 데이터를 삭제 대상으로 보존
             original = self._row_originals.get(row_index) or self._rows[row_index]
             self._pending_deletes.append(dict(original))
@@ -215,19 +219,19 @@ class EsgEditableTableModel(EsgTableModel):
         """행 데이터를 교체하고 상태를 표시."""
         current = self._row_states.get(row_index, '')
         if force_new:
-            new_state = 'new'
-        elif current == 'new':
-            new_state = 'new'
+            new_state = RowState.NEW
+        elif current == RowState.NEW:
+            new_state = RowState.NEW
         else:
             self._row_originals.setdefault(row_index, dict(self._rows[row_index]))
-            new_state = 'modified'
+            new_state = RowState.MODIFIED
         self._rows[row_index] = dict(data)
         self._row_states[row_index] = new_state
         self._refresh_row(row_index)
 
     # ── PK 변경 시 원본 삭제 등록 ──────────────────────────────────
     def add_extra_deletion(self, row: dict) -> None:
-        self._extra_deletions.append(dict(row))
+        self._pending_deletes.append(dict(row))
 
     def get_row_original(self, row_index: int) -> dict:
         """'modified' 행의 원본 데이터 반환. 없으면 빈 dict."""
@@ -242,15 +246,15 @@ class EsgEditableTableModel(EsgTableModel):
         update 항목의 'original'은 PK 변경 감지에 사용.
         """
         insert = [self._rows[i]
-                  for i, s in self._row_states.items() if s == 'new']
+                  for i, s in self._row_states.items() if s == RowState.NEW]
         update = [{'data': self._rows[i],
                    'original': self._row_originals.get(i, {})}
-                  for i, s in self._row_states.items() if s == 'modified']
-        delete = list(self._pending_deletes) + list(self._extra_deletions)
+                  for i, s in self._row_states.items() if s == RowState.MODIFIED]
+        delete = list(self._pending_deletes)
         return {'insert': insert, 'update': update, 'delete': delete}
 
     def has_pending(self) -> bool:
-        return bool(self._row_states or self._pending_deletes or self._extra_deletions)
+        return bool(self._row_states or self._pending_deletes)
 
     def get_row_state(self, row_index: int) -> str:
         return self._row_states.get(row_index, '')

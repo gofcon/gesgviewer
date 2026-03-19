@@ -10,7 +10,7 @@ jqGrid 패턴 → QTableView + PaginationWidget 패턴으로 통일
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
                               QTableView, QPushButton, QAbstractItemView,
                               QSizePolicy, QLabel, QLineEdit, QComboBox,
-                              QToolButton, QHeaderView, QMenu)
+                              QToolButton, QHeaderView, QMenu, QMessageBox)
 from PyQt6.QtCore import Qt, QSortFilterProxyModel, QModelIndex
 from ui.widgets.base_table_model import EsgTableModel
 from ui.widgets.pagination_widget import PaginationWidget
@@ -331,5 +331,4 @@ class BaseListView(QWidget):
         if rows:
             export_to_excel(rows, headers, keys, self.VIEW_TITLE)
         else:
-            from PyQt6.QtWidgets import QMessageBox
             QMessageBox.information(self, "Excel", "내보낼 데이터가 없습니다.")

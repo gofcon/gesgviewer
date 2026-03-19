@@ -4,6 +4,7 @@ Spring: IrCurveServiceImpl, YtmUsrServiceImpl → Python 포팅
 """
 from db.database import get_session
 from db.models.ir_curve import IrCurve, IrCurveSpot, IrCurveYtmUsr
+from db.utils import paginate, delete_by_pk
 
 
 class IrCurveService:
@@ -17,9 +18,8 @@ class IrCurveService:
                 q = q.filter(IrCurveSpot.base_yymm == base_yymm)
             if ir_curve_id:
                 q = q.filter(IrCurveSpot.ir_curve_id == ir_curve_id)
-            total = q.count()
-            rows = q.order_by(IrCurveSpot.base_yymm, IrCurveSpot.mat_cd)\
-                    .offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(
+                q.order_by(IrCurveSpot.base_yymm, IrCurveSpot.mat_cd), page, page_size)
             return ([{
                 "base_yymm":   r.base_yymm,
                 "appl_biz_dv": r.appl_biz_dv,
@@ -39,9 +39,8 @@ class IrCurveService:
                 q = q.filter(IrCurveYtmUsr.base_date.like(f"{base_yymm}%"))
             if ir_curve_id:
                 q = q.filter(IrCurveYtmUsr.ir_curve_id == ir_curve_id)
-            total = q.count()
-            rows = q.order_by(IrCurveYtmUsr.base_date, IrCurveYtmUsr.mat_cd)\
-                    .offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(
+                q.order_by(IrCurveYtmUsr.base_date, IrCurveYtmUsr.mat_cd), page, page_size)
             return ([{
                 "base_date":   r.base_date,
                 "ir_curve_id": r.ir_curve_id,
@@ -63,10 +62,7 @@ class IrCurveService:
     @staticmethod
     def delete_ytm_usr(base_date: str, ir_curve_id: str, mat_cd: str) -> None:
         with get_session() as session:
-            row = session.get(IrCurveYtmUsr, (base_date, ir_curve_id, mat_cd))
-            if row:
-                session.delete(row)
-                session.commit()
+            delete_by_pk(session, IrCurveYtmUsr, (base_date, ir_curve_id, mat_cd))
 
     # ─── 콤보 코드 ──────────────────────────────────────────────
     @staticmethod

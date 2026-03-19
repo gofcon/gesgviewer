@@ -3,9 +3,9 @@
 Spring: AuthGroupList, AuthInfoList, LgnPolicyList, UsrMng 기능 통합
 """
 import bcrypt
-from sqlalchemy.orm import Session
 from db.database import get_session
 from db.models.auth import AppUser, AuthInfo, AuthGroupInfo, IndivBaseDt, LoginPolicy
+from db.utils import paginate, upsert, delete_by_pk
 
 
 class AuthService:
@@ -44,9 +44,7 @@ class AuthService:
                 q = q.filter(AppUser.user_id.like(f"%{user_id}%"))
             if user_nm:
                 q = q.filter(AppUser.user_nm.like(f"%{user_nm}%"))
-            total = q.count()
-            rows = q.order_by(AppUser.user_id)\
-                    .offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(q.order_by(AppUser.user_id), page, page_size)
             return ([{
                 "user_id": r.user_id, "user_nm": r.user_nm,
                 "email": r.email, "author_code": r.author_code, "use_at": r.use_at,
@@ -71,10 +69,7 @@ class AuthService:
     @staticmethod
     def delete_user(user_id: str) -> None:
         with get_session() as session:
-            user = session.get(AppUser, user_id)
-            if user:
-                session.delete(user)
-                session.commit()
+            delete_by_pk(session, AppUser, user_id)
 
     # ─── 권한 정보 ────────────────────────────────────────────
     @staticmethod
@@ -84,8 +79,7 @@ class AuthService:
             q = session.query(AuthInfo)
             if author_nm:
                 q = q.filter(AuthInfo.author_nm.like(f"%{author_nm}%"))
-            total = q.count()
-            rows = q.offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(q, page, page_size)
             return ([{
                 "author_code": r.author_code, "author_nm": r.author_nm,
                 "author_dc": r.author_dc, "author_creat_de": r.author_creat_de,
@@ -95,43 +89,23 @@ class AuthService:
     @staticmethod
     def save_auth_info(data: dict) -> None:
         with get_session() as session:
-            obj = session.get(AuthInfo, data["author_code"])
-            if obj:
-                for k, v in data.items():
-                    if hasattr(obj, k):
-                        setattr(obj, k, v)
-            else:
-                session.add(AuthInfo(**data))
-            session.commit()
+            upsert(session, AuthInfo, data["author_code"], data)
 
     @staticmethod
     def delete_auth_info(author_code: str) -> None:
         with get_session() as session:
-            obj = session.get(AuthInfo, author_code)
-            if obj:
-                session.delete(obj)
-                session.commit()
+            delete_by_pk(session, AuthInfo, author_code)
 
     # ─── 로그인 정책 CRUD ────────────────────────────────────
     @staticmethod
     def save_lgn_policy(data: dict) -> None:
         with get_session() as session:
-            obj = session.get(LoginPolicy, data["emplyr_id"])
-            if obj:
-                for k, v in data.items():
-                    if hasattr(obj, k):
-                        setattr(obj, k, v)
-            else:
-                session.add(LoginPolicy(**data))
-            session.commit()
+            upsert(session, LoginPolicy, data["emplyr_id"], data)
 
     @staticmethod
     def delete_lgn_policy(emplyr_id: str) -> None:
         with get_session() as session:
-            obj = session.get(LoginPolicy, emplyr_id)
-            if obj:
-                session.delete(obj)
-                session.commit()
+            delete_by_pk(session, LoginPolicy, emplyr_id)
 
     # ─── 개인 기준년월 CRUD ─────────────────────────────────
     @staticmethod
@@ -151,10 +125,7 @@ class AuthService:
     @staticmethod
     def delete_indiv_base_dt(user_id: str, base_yymm: str) -> None:
         with get_session() as session:
-            obj = session.get(IndivBaseDt, (user_id, base_yymm))
-            if obj:
-                session.delete(obj)
-                session.commit()
+            delete_by_pk(session, IndivBaseDt, (user_id, base_yymm))
 
     # ─── 개인 기준년월 조회 ────────────────────────────────────────────────
     @staticmethod
@@ -170,8 +141,7 @@ class AuthService:
     def get_indiv_base_dt_list(page: int = 1, page_size: int = 20) -> tuple[list[dict], int]:
         with get_session() as session:
             q = session.query(IndivBaseDt)
-            total = q.count()
-            rows = q.offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(q, page, page_size)
             return ([{
                 "user_id": r.user_id, "base_yymm": r.base_yymm,
                 "last_modified_by": r.last_modified_by,

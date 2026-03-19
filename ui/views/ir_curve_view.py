@@ -163,17 +163,17 @@ class IrCurveView(QWidget):
 
     def _update_chart(self, rows: list[dict]) -> None:
         if not rows:
-            self.chart.clear(); return
+            self.chart.clear()
+            return
         from collections import defaultdict
-        mat_set: list[str] = []
+        seen_mat: dict[str, None] = {}
         series: dict[str, list] = defaultdict(list)
         for r in rows:
-            mat = r.get("mat_cd","")
-            if mat not in mat_set:
-                mat_set.append(mat)
-        for r in rows:
-            series[r.get("ir_curve_id","")].append(r.get("spot_rate") or 0)
-        self.chart.plot_line(mat_set, dict(series), title="금리 커브 (현물금리)", x_label="만기", y_label="금리")
+            seen_mat[r.get("mat_cd", "")] = None
+            series[r.get("ir_curve_id", "")].append(r.get("spot_rate") or 0)
+        self.chart.plot_line(
+            list(seen_mat), dict(series),
+            title="금리 커브 (현물금리)", x_label="만기", y_label="금리")
 
     def _on_excel(self) -> None:
         export_to_excel(self.model.all_rows(),

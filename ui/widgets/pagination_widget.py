@@ -73,6 +73,10 @@ class PaginationWidget(QWidget):
 
         self._refresh()
 
+    @property
+    def current_page(self) -> int:
+        return self._current
+
     def set_total(self, total: int, page_size: int | None = None) -> None:
         self._total = total
         if page_size:

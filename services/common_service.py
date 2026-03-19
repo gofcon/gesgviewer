@@ -9,6 +9,7 @@ from db.models.common import (CoEsgMeta, CoJobList, CoJobHist,
 from db.models.sprd_curve import SprdCurve, SprdAfnsBiz, CorpPd, CrdCorpPd
 from db.models.sprd_curve import ValidSceFwd, ValidRnd, ValidSceSto
 from db.models.ir_param_model import IrParamAfnsBiz, VolSwpn
+from db.utils import paginate, upsert, delete_by_pk
 
 
 class CommonService:
@@ -29,9 +30,7 @@ class CommonService:
                 q = q.filter(CoJobHist.base_yymm == base_yymm)
             if calc_sttus:
                 q = q.filter(CoJobHist.calc_sttus == calc_sttus)
-            total = q.count()
-            rows = q.order_by(CoJobHist.job_hist_id.desc())\
-                    .offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(q.order_by(CoJobHist.job_hist_id.desc()), page, page_size)
             return ([{
                 "job_hist_id":    r.job_hist_id,
                 "job_id":         r.job_id,
@@ -55,9 +54,7 @@ class BatchService:
                 q = q.filter(BatchOpert.batch_opert_nm.like(f"%{batch_opert_nm}%"))
             if batch_progrm:
                 q = q.filter(BatchOpert.batch_progrm.like(f"%{batch_progrm}%"))
-            total = q.count()
-            rows = q.order_by(BatchOpert.batch_opert_id)\
-                    .offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(q.order_by(BatchOpert.batch_opert_id), page, page_size)
             return ([{
                 "batch_opert_id": r.batch_opert_id,
                 "batch_opert_nm": r.batch_opert_nm,
@@ -87,9 +84,8 @@ class BatchService:
             q = session.query(BatchResult)
             if sttus:
                 q = q.filter(BatchResult.sttus == sttus)
-            total = q.count()
-            rows = q.order_by(BatchResult.frst_regist_pnttm.desc())\
-                    .offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(
+                q.order_by(BatchResult.frst_regist_pnttm.desc()), page, page_size)
             return ([{
                 "batch_result_id":  r.batch_result_id,
                 "batch_schdul_id":  r.batch_schdul_id,
@@ -117,19 +113,14 @@ class BatchService:
     @staticmethod
     def delete_batch_schdul(batch_schdul_id: str) -> None:
         with get_session() as session:
-            row = session.get(BatchSchdul, batch_schdul_id)
-            if row:
-                session.delete(row)
-                session.commit()
+            delete_by_pk(session, BatchSchdul, batch_schdul_id)
 
     # ─── 배치 스케줄 ────────────────────────────────────────────
     @staticmethod
     def get_batch_schdul_list(page: int = 1, page_size: int = 20) -> tuple[list[dict], int]:
         with get_session() as session:
             q = session.query(BatchSchdul)
-            total = q.count()
-            rows = q.order_by(BatchSchdul.batch_schdul_id)\
-                    .offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(q.order_by(BatchSchdul.batch_schdul_id), page, page_size)
             return ([{
                 "batch_schdul_id":    r.batch_schdul_id,
                 "batch_opert_id":     r.batch_opert_id,
@@ -171,10 +162,7 @@ class ContentService:
     @staticmethod
     def delete_cop_bbs(ntt_id: int) -> None:
         with get_session() as session:
-            row = session.get(CopBbs, ntt_id)
-            if row:
-                session.delete(row)
-                session.commit()
+            delete_by_pk(session, CopBbs, ntt_id)
 
     # ─── 메뉴 관리 ──────────────────────────────────────────────
     @staticmethod
@@ -198,31 +186,18 @@ class ContentService:
     @staticmethod
     def delete_mnu_mng(menu_no: int) -> None:
         with get_session() as session:
-            row = session.get(MnuMng, menu_no)
-            if row:
-                session.delete(row)
-                session.commit()
+            delete_by_pk(session, MnuMng, menu_no)
 
     # ─── 프로그램 관리 ──────────────────────────────────────────
     @staticmethod
     def save_pgm_mng(data: dict) -> None:
         with get_session() as session:
-            row = session.get(PgmMng, data["progrm_file_nm"])
-            if row:
-                for k, v in data.items():
-                    if hasattr(row, k):
-                        setattr(row, k, v)
-            else:
-                session.add(PgmMng(**data))
-            session.commit()
+            upsert(session, PgmMng, data["progrm_file_nm"], data)
 
     @staticmethod
     def delete_pgm_mng(progrm_file_nm: str) -> None:
         with get_session() as session:
-            row = session.get(PgmMng, progrm_file_nm)
-            if row:
-                session.delete(row)
-                session.commit()
+            delete_by_pk(session, PgmMng, progrm_file_nm)
 
 
 class SprdService:
@@ -235,9 +210,7 @@ class SprdService:
                 q = q.filter(SprdCurve.base_yymm == base_yymm)
             if ir_curve_id:
                 q = q.filter(SprdCurve.ir_curve_id == ir_curve_id)
-            total = q.count()
-            rows = q.order_by(SprdCurve.mat_cd)\
-                    .offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(q.order_by(SprdCurve.mat_cd), page, page_size)
             return ([{
                 "base_yymm":   r.base_yymm,
                 "ir_curve_id": r.ir_curve_id,
@@ -255,8 +228,7 @@ class ValidService:
             q = session.query(ValidSceFwd)
             if base_yymm:
                 q = q.filter(ValidSceFwd.base_yymm == base_yymm)
-            total = q.count()
-            rows = q.offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(q, page, page_size)
             return ([{
                 "base_yymm":       r.base_yymm,
                 "appl_biz_dv":     r.appl_biz_dv,
@@ -273,8 +245,7 @@ class ValidService:
             q = session.query(ValidRnd)
             if base_yymm:
                 q = q.filter(ValidRnd.base_yymm == base_yymm)
-            total = q.count()
-            rows = q.offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(q, page, page_size)
             return ([{
                 "base_yymm":       r.base_yymm,
                 "appl_biz_dv":     r.appl_biz_dv,
@@ -291,8 +262,7 @@ class ValidService:
             q = session.query(ValidSceSto)
             if base_yymm:
                 q = q.filter(ValidSceSto.base_yymm == base_yymm)
-            total = q.count()
-            rows = q.offset((page - 1) * page_size).limit(page_size).all()
+            rows, total = paginate(q, page, page_size)
             return ([{
                 "base_yymm":       r.base_yymm,
                 "appl_biz_dv":     r.appl_biz_dv,

@@ -182,22 +182,18 @@ class ParamHwCalcView(QWidget):
         self._update_chart(base_ym)
 
     def _update_chart(self, base_ym: str) -> None:
-        rows = ParamHwService.get_param_hw_chart_list(
-            base_yymm=base_ym)
+        rows = ParamHwService.get_param_hw_chart_list(base_yymm=base_ym)
         if not rows:
             self.chart.clear()
             return
         from collections import defaultdict
+        seen_mat: dict[str, None] = {}
         series: dict[str, list] = defaultdict(list)
-        mat_set: list[str] = []
         for r in rows:
-            mat = r["mat_cd"]
-            if mat not in mat_set:
-                mat_set.append(mat)
-        for r in rows:
+            seen_mat[r["mat_cd"]] = None
             series[r["param_typ_cd"]].append(r["param_val"])
         self.chart.plot_line(
-            mat_set, dict(series), title="HW 파라미터 (만기별)", x_label="만기")
+            list(seen_mat), dict(series), title="HW 파라미터 (만기별)", x_label="만기")
 
     def _on_excel(self) -> None:
         rows = self.table_model.all_rows()
