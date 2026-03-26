@@ -78,6 +78,10 @@ class BaseCrudView(BaseListView):
     # ── 조회/페이지 이동 — 미저장 경고 ──────────────────────────────
     def _on_search_click(self) -> None:
         if self._check_pending_and_confirm():
+            # 검색 모드 전환 + pager 숨김 (BaseListView 핵심 로직 포함)
+            self._search_mode = True
+            self._update_search_tooltip()
+            self.pager.setVisible(False)
             self._load_data(1)
 
     def _on_page_changed(self, page: int) -> None:

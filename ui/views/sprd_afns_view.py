@@ -23,7 +23,8 @@ class SprdAfnsView(BaseListView):
             ym = self._get_toolbar_yymm()
             if ym: q = q.filter(SprdAfnsBiz.base_yymm == ym)
             total = q.count()
-            rows_obj = q.offset((page-1)*DEFAULT_PAGE_SIZE).limit(DEFAULT_PAGE_SIZE).all()
+            ps = self._get_page_size()
+            rows_obj = q.offset((page-1)*ps).limit(ps).all()
             rows = [{"base_yymm": r.base_yymm,"ir_model_id": r.ir_model_id,"ir_curve_id": r.ir_curve_id,
                      "param_typ_cd": r.param_typ_cd,"param_val": float(r.param_val) if r.param_val else None} for r in rows_obj]
         self.table_model.load(rows); self.pager.set_total(total)

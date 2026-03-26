@@ -1,6 +1,6 @@
 """배치 작업 관리 — JSP: BatchOperList.jsp"""
 from ui.views._base_list_view import BaseListView
-from services.common_service import BatchService
+from services.config_service import BatchService
 from db.models.auth import AppUser
 
 HEADERS = [
@@ -17,5 +17,6 @@ class BatchOpertView(BaseListView):
         return None
     def _load_data(self, page: int = 1):
         rows, total = BatchService.get_batch_opert_list(
-            batch_opert_nm="", batch_progrm="", page=page)
+            batch_opert_nm="", batch_progrm="", page=page,
+            page_size=self._get_page_size())
         self.table_model.load(rows); self.pager.set_total(total)

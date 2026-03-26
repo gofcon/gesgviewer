@@ -1,7 +1,7 @@
 """로그인 정책 — JSP: LgnPolicyList.jsp"""
 from ui.views._base_crud_view import BaseCrudView
 from ui.widgets.form_dialog import FormField
-from services.auth_service import AuthService
+from services.system_service import AuthService
 from db.database import get_session
 from db.models.auth import LoginPolicy, AppUser
 from config.settings import DEFAULT_PAGE_SIZE
@@ -28,7 +28,8 @@ class LgnPolicyView(BaseCrudView):
         with get_session() as session:
             q = session.query(LoginPolicy)
             total = q.count()
-            rows_obj = q.offset((page - 1) * DEFAULT_PAGE_SIZE).limit(DEFAULT_PAGE_SIZE).all()
+            ps = self._get_page_size()
+            rows_obj = q.offset((page - 1) * ps).limit(ps).all()
             rows = [{"emplyr_id": r.emplyr_id, "ip_info": r.ip_info,
                      "lmtt_at": r.lmtt_at} for r in rows_obj]
         self.table_model.load(rows)

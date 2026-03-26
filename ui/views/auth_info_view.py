@@ -1,7 +1,7 @@
 """사용자 권한 목록 — JSP: AuthInfoList.jsp"""
 from ui.views._base_crud_view import BaseCrudView
 from ui.widgets.form_dialog import FormField
-from services.auth_service import AuthService
+from services.system_service import AuthService
 from db.models.auth import AppUser
 
 HEADERS = [
@@ -29,7 +29,8 @@ class AuthInfoView(BaseCrudView):
 
     def _load_data(self, page: int = 1):
         rows, total = AuthService.get_auth_info_list(
-            author_nm="", page=page)
+            author_nm="", page=page,
+            page_size=self._get_page_size())
         self.table_model.load(rows)
         self.pager.set_total(total)
 

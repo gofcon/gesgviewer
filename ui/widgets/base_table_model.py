@@ -91,6 +91,19 @@ class EsgTableModel(QAbstractTableModel):
             self._headers = headers
         self.endResetModel()
 
+    def append_rows(self, rows: list[dict]) -> None:
+        """기존 데이터 끝에 행 추가 — 무한 스크롤 배치 로드용.
+        beginResetModel 대신 beginInsertRows 를 사용하므로
+        스크롤 위치·선택 상태가 유지된다.
+        """
+        if not rows:
+            return
+        first = len(self._rows)
+        last  = first + len(rows) - 1
+        self.beginInsertRows(QModelIndex(), first, last)
+        self._rows.extend(rows)
+        self.endInsertRows()
+
     def get_row(self, row_index: int) -> dict:
         return self._rows[row_index] if 0 <= row_index < len(self._rows) else {}
 

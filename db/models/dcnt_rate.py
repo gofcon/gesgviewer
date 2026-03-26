@@ -1,38 +1,181 @@
 """
 할인율 모델
-Oracle: E_IR_DCNT_RATE_BIZ, E_IR_DCNT_STO_BIZ
+Oracle: E_IR_DCNT_RATE_BIZ, E_IR_DCNT_SCE_STO_BIZ
 """
 from datetime import datetime
-from sqlalchemy import Column, String, Numeric, DateTime, Integer
-from db.database import Base
+from decimal import Decimal
+from typing import Optional
+
+from sqlmodel import SQLModel, Field
+from sqlalchemy import Column, DateTime, Numeric
 
 
-class IrDcntRateBiz(Base):
+class IrDcntRateBiz(SQLModel, table=True):
     """할인율 비즈 (E_IR_DCNT_RATE_BIZ)"""
     __tablename__ = "E_IR_DCNT_RATE_BIZ"
 
-    base_yymm        = Column(String(6),   primary_key=True, comment="기준년월")
-    appl_biz_dv      = Column(String(10),  primary_key=True, comment="적용업무구분")
-    ir_curve_id      = Column(String(20),  primary_key=True, comment="금리커브ID")
-    ir_curve_sce_no  = Column(Integer,     primary_key=True, comment="금리커브시나리오번호")
-    mat_cd           = Column(String(10),  primary_key=True, comment="만기코드")
-    dcnt_rate        = Column(Numeric(22, 10),               comment="할인율")
-    spot_rate        = Column(Numeric(22, 10),               comment="현물금리")
-    fwd_rate         = Column(Numeric(22, 10),               comment="선도금리")
-    last_modified_by = Column(String(100),                   comment="최종수정자")
-    last_update_date = Column(DateTime, default=datetime.now, comment="최종수정일자")
+    base_yymm:        str           = Field(primary_key=True)
+    appl_biz_dv:      str           = Field(primary_key=True)
+    ir_curve_id:      str           = Field(primary_key=True)
+    ir_curve_sce_no:  int           = Field(primary_key=True)
+    mat_cd:           str           = Field(primary_key=True)
+    spot_rate:        Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    fwd_rate:         Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    last_modified_by: Optional[str] = None
+    last_update_date: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime, default=datetime.now))
 
 
-class IrDcntStoBiz(Base):
-    """할인율 시나리오 저장 (E_IR_DCNT_STO_BIZ)"""
-    __tablename__ = "E_IR_DCNT_STO_BIZ"
+class IrDcntSceSto(SQLModel, table=True):
+    """할인율 확률시나리오 저장 (E_IR_DCNT_SCE_STO_BIZ)"""
+    __tablename__ = "E_IR_DCNT_SCE_STO_BIZ"
 
-    base_yymm        = Column(String(6),   primary_key=True, comment="기준년월")
-    appl_biz_dv      = Column(String(10),  primary_key=True, comment="적용업무구분")
-    ir_curve_id      = Column(String(20),  primary_key=True, comment="금리커브ID")
-    ir_curve_sce_no  = Column(Integer,     primary_key=True, comment="금리커브시나리오번호")
-    sce_path_no      = Column(Integer,     primary_key=True, comment="시나리오경로번호")
-    mat_cd           = Column(String(10),  primary_key=True, comment="만기코드")
-    rate_val         = Column(Numeric(22, 10),               comment="금리값")
-    last_modified_by = Column(String(100),                   comment="최종수정자")
-    last_update_date = Column(DateTime, default=datetime.now, comment="최종수정일자")
+    base_yymm:        str           = Field(primary_key=True)
+    appl_biz_dv:      str           = Field(primary_key=True)
+    ir_model_id:      str           = Field(primary_key=True)
+    ir_curve_id:      str           = Field(primary_key=True)
+    ir_curve_sce_no:  int           = Field(primary_key=True)
+    sce_no:           int           = Field(primary_key=True)
+    mat_cd:           str           = Field(primary_key=True)
+    spot_rate:        Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    fwd_rate:         Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    last_modified_by: Optional[str] = None
+    last_update_date: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime, default=datetime.now))
+
+
+class IrDcntRateUsr(SQLModel, table=True):
+    """할인율 사용자 입력 (E_IR_DCNT_RATE_USR)"""
+    __tablename__ = "E_IR_DCNT_RATE_USR"
+
+    base_yymm:        str           = Field(primary_key=True)
+    appl_biz_dv:      str           = Field(primary_key=True)
+    ir_curve_id:      str           = Field(primary_key=True)
+    ir_curve_sce_no:  int           = Field(primary_key=True)
+    mat_cd:           str           = Field(primary_key=True)
+    spot_rate:        Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    fwd_rate:         Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    adj_spot_rate:    Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    adj_fwd_rate:     Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    last_modified_by: Optional[str] = None
+    last_update_date: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime, default=datetime.now))
+
+
+class IrDcntRateBu(SQLModel, table=True):
+    """할인율 BU (E_IR_DCNT_RATE_BU)"""
+    __tablename__ = "E_IR_DCNT_RATE_BU"
+
+    base_yymm:           str           = Field(primary_key=True)
+    appl_biz_dv:         str           = Field(primary_key=True)
+    ir_curve_id:         str           = Field(primary_key=True)
+    ir_curve_sce_no:     int           = Field(primary_key=True)
+    mat_cd:              str           = Field(primary_key=True)
+    spot_rate_disc:      Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    spot_rate_cont:      Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    liq_prem:            Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    adj_spot_rate_disc:  Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    adj_spot_rate_cont:  Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    add_sprd:            Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    last_modified_by:    Optional[str] = None
+    last_update_date:    Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime, default=datetime.now))
+
+
+class IrDcntRateBuIm(SQLModel, table=True):
+    """할인율 BU 내부모형 (E_IR_DCNT_RATE_BU_IM)"""
+    __tablename__ = "E_IR_DCNT_RATE_BU_IM"
+
+    base_yymm:           str           = Field(primary_key=True)
+    appl_biz_dv:         str           = Field(primary_key=True)
+    ir_model_id:         str           = Field(primary_key=True)
+    ir_curve_id:         str           = Field(primary_key=True)
+    ir_curve_sce_no:     int           = Field(primary_key=True)
+    mat_cd:              str           = Field(primary_key=True)
+    spot_rate_disc:      Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    spot_rate_cont:      Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    liq_prem:            Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    adj_spot_rate_disc:  Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    adj_spot_rate_cont:  Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    add_sprd:            Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    last_modified_by:    Optional[str] = None
+    last_update_date:    Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime, default=datetime.now))
+
+
+class IrDcntSceDet(SQLModel, table=True):
+    """확률시나리오 상세(비즈) (E_IR_DCNT_SCE_DET_BIZ)"""
+    __tablename__ = "E_IR_DCNT_SCE_DET_BIZ"
+
+    base_yymm:        str           = Field(primary_key=True)
+    appl_biz_dv:      str           = Field(primary_key=True)
+    ir_model_id:      str           = Field(primary_key=True)
+    ir_curve_id:      str           = Field(primary_key=True)
+    ir_curve_sce_no:  int           = Field(primary_key=True)
+    mat_cd:           str           = Field(primary_key=True)
+    spot_rate:        Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    fwd_rate:         Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    last_modified_by: Optional[str] = None
+    last_update_date: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime, default=datetime.now))
+
+
+class IrDcntSceIm(SQLModel, table=True):
+    """확률시나리오 내부모형 (E_IR_DCNT_SCE_IM)"""
+    __tablename__ = "E_IR_DCNT_SCE_IM"
+
+    base_yymm:        str           = Field(primary_key=True)
+    appl_biz_dv:      str           = Field(primary_key=True)
+    ir_model_id:      str           = Field(primary_key=True)
+    ir_curve_id:      str           = Field(primary_key=True)
+    ir_curve_sce_no:  int           = Field(primary_key=True)
+    mat_cd:           str           = Field(primary_key=True)
+    spot_rate:        Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    fwd_rate:         Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    last_modified_by: Optional[str] = None
+    last_update_date: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime, default=datetime.now))
+
+
+class IrDcntSceStoGnr(SQLModel, table=True):
+    """확률시나리오 저장(일반) (E_IR_DCNT_SCE_STO_GNR)"""
+    __tablename__ = "E_IR_DCNT_SCE_STO_GNR"
+
+    base_yymm:        str           = Field(primary_key=True)
+    appl_biz_dv:      str           = Field(primary_key=True)
+    ir_model_id:      str           = Field(primary_key=True)
+    ir_curve_id:      str           = Field(primary_key=True)
+    ir_curve_sce_no:  int           = Field(primary_key=True)
+    sce_no:           int           = Field(primary_key=True)
+    mat_cd:           str           = Field(primary_key=True)
+    spot_rate:        Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    fwd_rate:         Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    last_modified_by: Optional[str] = None
+    last_update_date: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime, default=datetime.now))

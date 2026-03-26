@@ -13,7 +13,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import datetime, date
 import bcrypt
 
-from db.database import engine, SessionLocal, Base
+from db.database import engine, SessionLocal
+from sqlmodel import SQLModel
 import db.models  # 모든 모델 등록
 
 from db.models.auth          import AppUser, AuthInfo
@@ -25,21 +26,24 @@ from db.models.ir_param_sw   import IrParamSwUsr
 
 def create_tables():
     print("[1/4] 테이블 생성 중...")
-    Base.metadata.create_all(bind=engine)
+    SQLModel.metadata.create_all(bind=engine)
     print("      완료")
 
 
 def insert_default_data():
     session = SessionLocal()
     try:
-        print("[2/4] 기본 사용자 데이터 삽입 중...")
+        print("[2/5] 기본 사용자 데이터 삽입 중...")
         _insert_users(session)
 
-        print("[3/4] 공통 코드 / 메타 데이터 삽입 중...")
+        print("[3/5] 공통 코드 / 메타 데이터 삽입 중...")
         _insert_common(session)
 
-        print("[4/4] 금리 커브 / 파라미터 모델 / SW 파라미터 샘플 삽입 중...")
+        print("[4/5] 금리 커브 / 파라미터 모델 / SW 파라미터 샘플 삽입 중...")
         _insert_esg_samples(session)
+
+        print("[5/5] 메뉴 트리 초기 데이터 삽입 중...")
+        _insert_nav_tree(session)
 
         session.commit()
         print("      완료 — DB 초기화 성공!")
@@ -66,18 +70,18 @@ def _insert_users(session):
 
 def _insert_common(session):
     metas = [
-        CoEsgMeta(group_id="SYSTEM", param_key="DB_SCHEMA",  param_val="GESG",   param_desc="DB 스키마명"),
-        CoEsgMeta(group_id="SYSTEM", param_key="APP_VERSION", param_val="1.0.0",  param_desc="앱 버전"),
+        CoEsgMeta(group_id="SYSTEM", param_key="DB_SCHEMA",  param_value="GESG",   param_desc="DB 스키마명"),
+        CoEsgMeta(group_id="SYSTEM", param_key="APP_VERSION", param_value="1.0.0",  param_desc="앱 버전"),
     ]
     for m in metas:
         if not session.get(CoEsgMeta, (m.group_id, m.param_key)):
             session.add(m)
 
     jobs = [
-        CoJobList(job_id="JOB_HW_PARAM",   job_nm="HW 파라미터 계산"),
-        CoJobList(job_id="JOB_SW_PARAM",   job_nm="SW 파라미터 계산"),
-        CoJobList(job_id="JOB_DCNT_RATE",  job_nm="할인율 계산"),
-        CoJobList(job_id="JOB_SPRD_CURVE", job_nm="스프레드 커브 계산"),
+        CoJobList(job_id="JOB_HW_PARAM",   job_nm="HW 파라미터 계산",  use_yn="Y"),
+        CoJobList(job_id="JOB_SW_PARAM",   job_nm="SW 파라미터 계산",  use_yn="Y"),
+        CoJobList(job_id="JOB_DCNT_RATE",  job_nm="할인율 계산",       use_yn="Y"),
+        CoJobList(job_id="JOB_SPRD_CURVE", job_nm="스프레드 커브 계산", use_yn="Y"),
     ]
     for j in jobs:
         if not session.get(CoJobList, j.job_id):
@@ -87,9 +91,9 @@ def _insert_common(session):
 def _insert_esg_samples(session):
     # 금리 커브
     curves = [
-        IrCurve(ir_curve_id="KRW_GOV",  ir_curve_nm="원화 국채",  cur_cd="KRW", ir_curve_typ_cd="GOV"),
-        IrCurve(ir_curve_id="KRW_CORP", ir_curve_nm="원화 회사채", cur_cd="KRW", ir_curve_typ_cd="CORP"),
-        IrCurve(ir_curve_id="USD_GOV",  ir_curve_nm="달러 국채",   cur_cd="USD", ir_curve_typ_cd="GOV"),
+        IrCurve(ir_curve_id="KRW_GOV",  ir_curve_nm="원화 국채",  cur_cd="KRW", appl_meth_dv="GOV",  use_yn="Y"),
+        IrCurve(ir_curve_id="KRW_CORP", ir_curve_nm="원화 회사채", cur_cd="KRW", appl_meth_dv="CORP", use_yn="Y"),
+        IrCurve(ir_curve_id="USD_GOV",  ir_curve_nm="달러 국채",   cur_cd="USD", appl_meth_dv="GOV",  use_yn="Y"),
     ]
     for c in curves:
         if not session.get(IrCurve, c.ir_curve_id):
@@ -97,9 +101,9 @@ def _insert_esg_samples(session):
 
     # 파라미터 모델
     models = [
-        IrParamModel(ir_model_id="HW1F", ir_curve_id="KRW_GOV",  ir_model_nm="Hull-White 1-Factor"),
-        IrParamModel(ir_model_id="SW",   ir_curve_id="KRW_GOV",  ir_model_nm="Smith-Wilson"),
-        IrParamModel(ir_model_id="CIR",  ir_curve_id="KRW_CORP", ir_model_nm="CIR"),
+        IrParamModel(ir_model_id="HW1F", ir_curve_id="KRW_GOV",  ir_model_nm="Hull-White 1-Factor", use_yn="Y"),
+        IrParamModel(ir_model_id="SW",   ir_curve_id="KRW_GOV",  ir_model_nm="Smith-Wilson",        use_yn="Y"),
+        IrParamModel(ir_model_id="CIR",  ir_curve_id="KRW_CORP", ir_model_nm="CIR",                 use_yn="Y"),
     ]
     for m in models:
         if not session.get(IrParamModel, (m.ir_model_id, m.ir_curve_id)):
@@ -141,6 +145,29 @@ def _insert_esg_samples(session):
     for b in batch_opers:
         if not session.get(BatchOpert, b.batch_opert_id):
             session.add(b)
+
+
+def _insert_nav_tree(session):
+    """LETTNMENUINFO(MnuMng) 메뉴 트리 초기 시드."""
+    from db.models.common import MnuMng
+    if session.query(MnuMng).count() > 0:
+        return
+    from config.nav_tree import NAV_TREE
+    for cat_ordr, (cat_nm, groups) in enumerate(NAV_TREE, 1):
+        cat = MnuMng(menu_nm=cat_nm, menu_ordr=cat_ordr, upper_menu_no=None)
+        session.add(cat)
+        session.flush()
+        for grp_ordr, (grp_nm, items) in enumerate(groups, 1):
+            grp = MnuMng(menu_nm=grp_nm, menu_ordr=grp_ordr,
+                         upper_menu_no=cat.menu_no)
+            session.add(grp)
+            session.flush()
+            for item_ordr, (item_nm, view_key) in enumerate(items, 1):
+                session.add(MnuMng(
+                    menu_nm=item_nm, menu_ordr=item_ordr,
+                    upper_menu_no=grp.menu_no,
+                    progrm_file_nm=view_key,
+                ))
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 """배치 스케줄 관리 — JSP: BatchSchdList.jsp"""
 from ui.views._base_crud_view import BaseCrudView
 from ui.widgets.form_dialog import FormField
-from services.common_service import BatchService
+from services.config_service import BatchService
 from db.models.auth import AppUser
 
 HEADERS = [
@@ -30,7 +30,8 @@ class BatchSchdView(BaseCrudView):
         super().__init__(user, parent)
 
     def _load_data(self, page: int = 1):
-        rows, total = BatchService.get_batch_schdul_list(page=page)
+        rows, total = BatchService.get_batch_schdul_list(
+            page=page, page_size=self._get_page_size())
         self.table_model.load(rows)
         self.pager.set_total(total)
 

@@ -1,14 +1,13 @@
 """
 SQLAlchemy 엔진 / 세션 팩토리
+
+SQLModel 기반 — Base 클래스 대신 SQLModel.metadata 사용.
 """
 import os
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel  # noqa: F401  (모델 파일에서 직접 import 해도 됨)
 from config.settings import DB_URL, DB_PATH
-
-
-class Base(DeclarativeBase):
-    pass
 
 
 # data 디렉토리 자동 생성

@@ -16,6 +16,7 @@ from ui.widgets.base_table_model import EsgTableModel
 from ui.widgets.pagination_widget import PaginationWidget
 from utils.export_utils import export_to_excel
 from db.models.auth import AppUser
+from config.settings import DEFAULT_PAGE_SIZE
 
 
 # ─── 숫자/문자 혼합 정렬을 올바르게 처리하는 프록시 모델 ───────────
@@ -36,7 +37,57 @@ class _SortFilterProxy(QSortFilterProxyModel):
         return str(lv or "") < str(rv or "")
 
 
-class BaseListView(QWidget):
+class _ResponsiveButtonMixin:
+    """좁은 패널에서 버튼을 이모지 전용으로 전환하는 믹스인.
+
+    BaseListView 와 차트+그리드 복합 뷰(DcntRateView 등)가 공통으로 사용.
+    다중 상속 시 MRO 기반 cooperative __init__ 을 사용하므로
+    super().__init__() 호출 순서만 지키면 자동 초기화됨.
+    """
+
+    # 이 너비(px) 이하로 좁아지면 버튼을 이모지 전용으로 전환.
+    # 차트+그리드 복합 뷰는 서브클래스에서 더 큰 값으로 오버라이드.
+    _COMPACT_THRESHOLD = 560
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # [(QPushButton, full_text, emoji, label, original_width), ...]
+        self._responsive_btns: list[tuple] = []
+        self._is_compact: bool = False
+
+    def _register_responsive_btn(self, btn: QPushButton) -> None:
+        """버튼을 반응형 목록에 등록. 'emoji 한글' 형태의 텍스트를 분리해 저장."""
+        full_text = btn.text()
+        parts     = full_text.split(" ", 1)
+        emoji     = parts[0]                         # 첫 토큰 = 이모지
+        label     = parts[1] if len(parts) > 1 else full_text
+        orig_w    = btn.maximumWidth()
+        if orig_w >= 16_777_215:                     # setFixedWidth 미사용
+            orig_w = 80
+        self._responsive_btns.append((btn, full_text, emoji, label, orig_w))
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._update_button_mode()
+
+    def _update_button_mode(self) -> None:
+        """패널 너비에 따라 버튼을 이모지 전용 ↔ 전체 텍스트 모드로 전환."""
+        compact = self.width() < self._COMPACT_THRESHOLD
+        if compact == self._is_compact:
+            return
+        self._is_compact = compact
+        for btn, full_text, emoji, label, orig_w in self._responsive_btns:
+            if compact:
+                btn.setText(emoji)
+                btn.setFixedWidth(34)
+                btn.setToolTip(label)      # 호버 시 한글 레이블 표시
+            else:
+                btn.setText(full_text)
+                btn.setFixedWidth(orig_w)
+                btn.setToolTip("")
+
+
+class BaseListView(_ResponsiveButtonMixin, QWidget):
     """
     서브클래스에서 반드시 구현:
         HEADERS     : list[tuple[str, str]]  — [(컬럼키, 헤더명), ...]
@@ -62,9 +113,14 @@ class BaseListView(QWidget):
         return EsgTableModel([], self.HEADERS)
 
     def __init__(self, user: AppUser, parent=None):
-        super().__init__(parent)
+        super().__init__(parent)   # _ResponsiveButtonMixin.__init__ → QWidget.__init__
         self.user = user
         self.table_model = self._make_table_model()
+
+        # ── 검색 모드 플래그 ─────────────────────────────────────
+        # False: 조회 전 (yymm 없음, 페이지네이션, 클라이언트 필터)
+        # True : 조회 후 (yymm 적용, 전체 로드, 스크롤)
+        self._search_mode: bool = False
 
         # ── 정렬·필터 프록시 ─────────────────────────────────────
         self.proxy_model = _SortFilterProxy()
@@ -90,7 +146,10 @@ class BaseListView(QWidget):
         self._btn_search = QPushButton("🔍 조회")
         self._btn_search.setFixedWidth(80)
         self._btn_search.clicked.connect(self._on_search_click)
+        self._register_responsive_btn(self._btn_search)
         title_row.addWidget(title)
+        for w in self._build_title_extra():   # 서브클래스 추가 위젯 (예: DataBrowserView 테이블 콤보)
+            title_row.addWidget(w)
         title_row.addStretch()
         title_row.addWidget(self._btn_search)
         root.addLayout(title_row)
@@ -115,7 +174,7 @@ class BaseListView(QWidget):
         filter_row.addWidget(lbl_filter)
 
         self._filter_edit = QLineEdit()
-        self._filter_edit.setPlaceholderText("입력하면 실시간 필터링…")
+        self._filter_edit.setPlaceholderText("입력하면 현재 그리드에서 필터링…")
         self._filter_edit.setStyleSheet(
             "QLineEdit { border:1px solid #CBD5E1; border-radius:3px;"
             "            padding:2px 6px; font-size:12px; }"
@@ -183,6 +242,7 @@ class BaseListView(QWidget):
         left_layout.setSpacing(4)
         for btn in self._build_bottom_left_buttons():
             left_layout.addWidget(btn)
+            self._register_responsive_btn(btn)
         left_layout.addStretch()
         left_w.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
@@ -193,10 +253,12 @@ class BaseListView(QWidget):
         right_layout.addStretch()
         for btn in self._build_bottom_right_buttons():
             right_layout.addWidget(btn)
+            self._register_responsive_btn(btn)
         btn_excel = QPushButton("📥 Excel")
         btn_excel.setFixedWidth(80)
         btn_excel.clicked.connect(self._on_excel)
         right_layout.addWidget(btn_excel)
+        self._register_responsive_btn(btn_excel)
         right_w.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         bottom_bar = QHBoxLayout()
@@ -252,9 +314,31 @@ class BaseListView(QWidget):
 
     # ─── 서브클래스 오버라이드 포인트 ────────────────────────────
     def _get_toolbar_yymm(self) -> str:
-        """메인 툴바의 기준년월 반환 (YYYYMM). 툴바가 없으면 빈 문자열."""
+        """메인 툴바의 기준년월 반환 (YYYYMM).
+
+        조회 버튼을 누르기 전(초기 모드)에는 빈 문자열을 반환해
+        yymm 필터 없이 전체 데이터를 로드한다.
+        조회 버튼 클릭 후(검색 모드)에는 현재 툴바 값을 반환한다.
+        """
+        if not self._search_mode:
+            return ""
         win = self.window()
         return win.get_base_yymm() if hasattr(win, "get_base_yymm") else ""
+
+    def _get_page_size(self) -> int:
+        """현재 모드에 따른 페이지 크기.
+
+        조회 전: DEFAULT_PAGE_SIZE (페이지네이션)
+        조회 후: 999_999 (전체 로드 → 스크롤)
+        서브클래스 _load_data() 에서 page_size 인자로 사용한다.
+        """
+        return 999_999 if self._search_mode else DEFAULT_PAGE_SIZE
+
+    def _build_title_extra(self) -> list:
+        """제목 라벨 오른쪽에 추가할 위젯 목록 반환.
+        서브클래스에서 오버라이드해 제목행에 커스텀 위젯을 삽입할 수 있다.
+        """
+        return []
 
     def _build_search_area(self) -> QWidget | None:
         """검색 조건 위젯 반환. 없으면 None."""
@@ -283,8 +367,56 @@ class BaseListView(QWidget):
         btn_import.setEnabled(False)
         return [btn_import]
 
+    def _get_search_text(self) -> str:
+        """필터 입력창의 현재 텍스트 반환.
+
+        서브클래스에서 _load_data() 안에 서버사이드 조건으로 활용 가능:
+            keyword = self._get_search_text()
+            if keyword:
+                query = query.filter(Model.col.contains(keyword))
+        """
+        return self._filter_edit.text().strip()
+
+    def _update_search_tooltip(self) -> None:
+        """조회 버튼 툴팁을 현재 활성 조회 조건(기준년월 + 필터텍스트)으로 갱신."""
+        yymm = self._get_toolbar_yymm()
+        text = self._get_search_text()
+        parts: list[str] = []
+        if yymm:
+            parts.append(f"기준년월: {yymm}")
+        if text:
+            parts.append(f"필터: {text}")
+        if parts:
+            tip = "📋 현재 조회 조건\n" + "\n".join(f"  • {p}" for p in parts)
+        else:
+            tip = "📋 조회 조건 없음 (전체 데이터)"
+        self._btn_search.setToolTip(tip)
+
+    def _update_button_mode(self) -> None:
+        """반응형 모드 전환 후 조회 버튼의 동적 툴팁을 복원."""
+        super()._update_button_mode()
+        # compact 모드에서 믹스인이 툴팁을 '조회'로 덮어쓰므로
+        # 항상 동적 조건 툴팁으로 다시 설정한다.
+        if hasattr(self, "_btn_search"):
+            self._update_search_tooltip()
+
+    def showEvent(self, event) -> None:
+        """탭 전환 또는 첫 표시 시 기준년월이 반영된 최신 툴팁으로 갱신."""
+        super().showEvent(event)
+        self._update_search_tooltip()
+
     def _on_search_click(self) -> None:
-        """조회 버튼 핸들러. 서브클래스에서 오버라이드 가능 (예: 미저장 경고)."""
+        """조회 버튼 핸들러.
+
+        첫 클릭 시 검색 모드로 전환:
+          • _get_toolbar_yymm() 이 실제 yymm 반환
+          • _get_page_size() 가 999_999 반환 (전체 로드)
+          • PaginationWidget 숨김 (스크롤 모드)
+        서브클래스에서 오버라이드 가능 (예: 미저장 경고).
+        """
+        self._search_mode = True
+        self._update_search_tooltip()
+        self.pager.setVisible(False)
         self._load_data(1)
 
     def _on_page_changed(self, page: int) -> None:
@@ -310,6 +442,7 @@ class BaseListView(QWidget):
     # ─── 필터 슬롯 ────────────────────────────────────────────────
     def _on_filter_text_changed(self, text: str) -> None:
         self.proxy_model.setFilterFixedString(text)
+        self._update_search_tooltip()   # 필터 변경 즉시 버튼 툴팁 동기화
 
     def _on_filter_col_changed(self, index: int) -> None:
         """전체 컬럼(-1) 또는 특정 컬럼(0-based) 선택"""

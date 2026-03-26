@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
                               QFrame, QCheckBox)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from services.auth_service import AuthService
+from services.system_service import AuthService
 from db.models.auth import AppUser
 
 # 사용자 설정 파일 경로 (~/.config/esg/prefs.json)

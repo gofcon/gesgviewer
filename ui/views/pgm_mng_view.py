@@ -1,7 +1,7 @@
 """프로그램 관리 — JSP: PgmMngList.jsp"""
 from ui.views._base_crud_view import BaseCrudView
 from ui.widgets.form_dialog import FormField
-from services.common_service import ContentService
+from services.system_service import ContentService
 from db.database import get_session
 from db.models.common import PgmMng
 from db.models.auth import AppUser
@@ -33,7 +33,8 @@ class PgmMngView(BaseCrudView):
         with get_session() as session:
             q = session.query(PgmMng)
             total = q.count()
-            rows_obj = q.offset((page - 1) * DEFAULT_PAGE_SIZE).limit(DEFAULT_PAGE_SIZE).all()
+            ps = self._get_page_size()
+            rows_obj = q.offset((page - 1) * ps).limit(ps).all()
             rows = [{"progrm_file_nm": r.progrm_file_nm, "progrm_stre_path": r.progrm_stre_path,
                      "url": r.url, "use_at": r.use_at} for r in rows_obj]
         self.table_model.load(rows)

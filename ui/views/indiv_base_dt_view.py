@@ -1,7 +1,7 @@
 """개인 기준일자 — JSP: IndivBaseDtList.jsp"""
 from ui.views._base_crud_view import BaseCrudView
 from ui.widgets.form_dialog import FormField
-from services.auth_service import AuthService
+from services.system_service import AuthService
 from db.models.auth import AppUser
 
 HEADERS = [("user_id","사용자ID"),("base_yymm","기준년월"),("last_modified_by","최종수정자")]
@@ -21,7 +21,8 @@ class IndivBaseDtView(BaseCrudView):
         super().__init__(user, parent)
 
     def _load_data(self, page: int = 1):
-        rows, total = AuthService.get_indiv_base_dt_list(page=page)
+        rows, total = AuthService.get_indiv_base_dt_list(
+            page=page, page_size=self._get_page_size())
         self.table_model.load(rows)
         self.pager.set_total(total)
 

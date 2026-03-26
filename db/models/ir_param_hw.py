@@ -3,34 +3,74 @@ Hull-White 파라미터 모델
 Oracle: E_IR_PARAM_HW_CALC, E_IR_PARAM_HW_BIZ
 """
 from datetime import datetime
-from sqlalchemy import Column, String, Numeric, DateTime
-from db.database import Base
+from decimal import Decimal
+from typing import Optional
+
+from sqlmodel import SQLModel, Field
+from sqlalchemy import Column, DateTime, Numeric
 
 
-class IrParamHwCalc(Base):
+class IrParamHwCalc(SQLModel, table=True):
     """HW 파라미터 계산 결과 (E_IR_PARAM_HW_CALC)"""
     __tablename__ = "E_IR_PARAM_HW_CALC"
 
-    base_yymm        = Column(String(6),   primary_key=True, comment="기준년월")
-    ir_model_id      = Column(String(20),  primary_key=True, comment="금리모델ID")
-    ir_curve_id      = Column(String(20),  primary_key=True, comment="금리커브ID")
-    mat_cd           = Column(String(10),  primary_key=True, comment="만기코드")
-    param_typ_cd     = Column(String(20),  primary_key=True, comment="파라미터유형코드")
-    param_val        = Column(Numeric(22, 10),               comment="파라미터값")
-    last_modified_by = Column(String(100),                   comment="최종수정자")
-    last_update_date = Column(DateTime, default=datetime.now, comment="최종수정일자")
+    base_yymm:        str           = Field(primary_key=True)
+    ir_model_id:      str           = Field(primary_key=True)
+    ir_curve_id:      str           = Field(primary_key=True)
+    mat_cd:           str           = Field(primary_key=True)
+    param_typ_cd:     str           = Field(primary_key=True)
+    param_val:        Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 10)))
+    last_modified_by: Optional[str] = None
+    last_update_date: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime, default=datetime.now))
 
 
-class IrParamHwBiz(Base):
+class IrParamHwBiz(SQLModel, table=True):
     """HW 파라미터 업무 적용 (E_IR_PARAM_HW_BIZ)"""
     __tablename__ = "E_IR_PARAM_HW_BIZ"
 
-    base_yymm        = Column(String(6),   primary_key=True, comment="기준년월")
-    appl_biz_dv      = Column(String(10),  primary_key=True, comment="적용업무구분")
-    ir_model_id      = Column(String(20),  primary_key=True, comment="금리모델ID")
-    ir_curve_id      = Column(String(20),  primary_key=True, comment="금리커브ID")
-    mat_cd           = Column(String(10),  primary_key=True, comment="만기코드")
-    param_typ_cd     = Column(String(20),  primary_key=True, comment="파라미터유형코드")
-    param_val        = Column(Numeric(22, 10),               comment="파라미터값")
-    last_modified_by = Column(String(100),                   comment="최종수정자")
-    last_update_date = Column(DateTime, default=datetime.now, comment="최종수정일자")
+    base_yymm:        str           = Field(primary_key=True)
+    appl_biz_dv:      str           = Field(primary_key=True)
+    ir_model_id:      str           = Field(primary_key=True)
+    ir_curve_id:      str           = Field(primary_key=True)
+    mat_cd:           str           = Field(primary_key=True)
+    param_typ_cd:     str           = Field(primary_key=True)
+    param_val:        Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 10)))
+    last_modified_by: Optional[str] = None
+    last_update_date: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime, default=datetime.now))
+
+
+class IrParamHwRnd(SQLModel, table=True):
+    """HW 난수 (E_IR_PARAM_HW_RND)"""
+    __tablename__ = "E_IR_PARAM_HW_RND"
+
+    base_yymm:        str           = Field(primary_key=True)
+    ir_model_id:      str           = Field(primary_key=True)
+    ir_curve_id:      str           = Field(primary_key=True)
+    sce_no:           int           = Field(primary_key=True)
+    mat_cd:           str           = Field(primary_key=True)
+    rnd_num:          Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(22, 20)))
+    last_modified_by: Optional[str] = None
+    last_update_date: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime, default=datetime.now))
+
+
+class IrParamHwUsr(SQLModel, table=True):
+    """HW 파라미터 사용자 입력 (E_IR_PARAM_HW_USR)"""
+    __tablename__ = "E_IR_PARAM_HW_USR"
+
+    base_yymm:        str           = Field(primary_key=True)
+    appl_biz_dv:      str           = Field(primary_key=True)
+    ir_model_id:      str           = Field(primary_key=True)
+    ir_curve_id:      str           = Field(primary_key=True)
+    mat_cd:           str           = Field(primary_key=True)
+    param_typ_cd:     str           = Field(primary_key=True)
+    param_val:        Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(25, 20)))
+    last_modified_by: Optional[str] = None
+    last_update_date: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime, default=datetime.now))

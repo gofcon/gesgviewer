@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy,
 from PyQt6.QtCore import Qt, QSortFilterProxyModel
 from ui.widgets.base_table_model import EsgTableModel
 from ui.widgets.pagination_widget import PaginationWidget
-from services.param_sw_service import ParamSwService
+from services.input_service import ParamSwInputService
 from utils.export_utils import export_to_excel
 from db.models.auth import AppUser
 
@@ -136,7 +136,7 @@ class ParamSwView(QWidget):
         return win.get_base_yymm() if hasattr(win, "get_base_yymm") else ""
 
     def _load(self, page: int = 1) -> None:
-        rows, total = ParamSwService.get_sw_usr_list(
+        rows, total = ParamSwInputService.get_sw_usr_list(
             appl_st_yymm=self._get_toolbar_yymm(),
             page=page)
         self.model.load(rows)
@@ -155,7 +155,7 @@ class ParamSwView(QWidget):
     def _on_add(self) -> None:
         dlg = SwUsrEditDialog(self)
         if dlg.exec():
-            ParamSwService.save_sw_usr(dlg.get_data())
+            ParamSwInputService.save_sw_usr(dlg.get_data())
             self._load(1)
 
     def _on_edit(self) -> None:
@@ -167,7 +167,7 @@ class ParamSwView(QWidget):
         row = self.model.get_row(src_row)
         dlg = SwUsrEditDialog(self, row)
         if dlg.exec():
-            ParamSwService.save_sw_usr(dlg.get_data())
+            ParamSwInputService.save_sw_usr(dlg.get_data())
             self._load(1)
 
     def _on_delete(self) -> None:
@@ -179,7 +179,7 @@ class ParamSwView(QWidget):
         row = self.model.get_row(src_row)
         reply = QMessageBox.question(self, "삭제 확인", "선택한 행을 삭제하시겠습니까?")
         if reply == QMessageBox.StandardButton.Yes:
-            ParamSwService.delete_sw_usr(
+            ParamSwInputService.delete_sw_usr(
                 row["appl_st_yymm"], row["appl_biz_dv"],
                 row["ir_curve_id"], row["ir_curve_sce_no"])
             self._load(1)

@@ -1,6 +1,6 @@
 """사용자별 권한 관리 — JSP: AuthGroupList.jsp"""
 from ui.views._base_list_view import BaseListView
-from services.auth_service import AuthService
+from services.system_service import AuthService
 from db.models.auth import AppUser
 
 HEADERS = [
@@ -17,5 +17,6 @@ class AuthGroupView(BaseListView):
         return None
     def _load_data(self, page: int = 1):
         rows, total = AuthService.get_user_list(
-            user_id="", user_nm="", page=page)
+            user_id="", user_nm="", page=page,
+            page_size=self._get_page_size())
         self.table_model.load(rows); self.pager.set_total(total)

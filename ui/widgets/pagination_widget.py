@@ -81,7 +81,8 @@ class PaginationWidget(QWidget):
         self._total = total
         if page_size:
             self._size = page_size
-        self._current = 1
+        # 현재 페이지를 유효 범위로 조정 (강제 1 리셋 X → 페이지 이동 후 활성 버튼 유지)
+        self._current = max(1, min(self._current, self._total_pages()))
         self._refresh()
 
     def reset(self) -> None:

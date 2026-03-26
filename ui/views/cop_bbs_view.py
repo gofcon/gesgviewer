@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import QWidget, QLineEdit, QFormLayout
 from ui.views._base_crud_view import BaseCrudView
 from ui.widgets.form_dialog import FormField
-from services.common_service import ContentService
+from services.system_service import ContentService
 from db.database import get_session
 from db.models.common import CopBbs
 from db.models.auth import AppUser

@@ -34,9 +34,32 @@ else:
 os.environ.setdefault("ESG_DATA_DIR", os.path.join(_EXEC_DIR, "data"))
 os.environ.setdefault("ESG_EXPORT_DIR", os.path.join(_EXEC_DIR, "exports"))
 
-from PyQt6.QtWidgets import QApplication, QMessageBox
+from PyQt6.QtWidgets import QApplication, QMessageBox, QPushButton
 from PyQt6.QtGui import QFont, QFontDatabase, QIcon
+from PyQt6.QtCore import QObject, QEvent, Qt
 from config.settings import APP_TITLE
+
+
+class _BtnCursorFilter(QObject):
+    """전역 이벤트 필터 — 활성 버튼 hover 시 포인터 커서(☞) 표시."""
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if isinstance(watched, QPushButton):
+            t = event.type()
+            if t == QEvent.Type.Enter:
+                # 진입 시 활성 여부에 따라 커서 전환
+                watched.setCursor(
+                    Qt.CursorShape.PointingHandCursor
+                    if watched.isEnabled()
+                    else Qt.CursorShape.ArrowCursor
+                )
+            elif t == QEvent.Type.EnabledChange:
+                # 활성/비활성 전환 시 커서 즉시 반영
+                if watched.isEnabled():
+                    watched.setCursor(Qt.CursorShape.PointingHandCursor)
+                else:
+                    watched.unsetCursor()
+        return False  # 이벤트 소비하지 않음 — 정상 처리 유지
 
 # ── 아이콘 경로: 개발 환경 = 소스 루트/resources, 패키징 = 실행파일 옆 resources
 _ICON_PATH = os.path.join(
@@ -61,6 +84,10 @@ def main() -> int:
     app.setApplicationName(APP_TITLE)
     if os.path.exists(_ICON_PATH):
         app.setWindowIcon(QIcon(_ICON_PATH))
+
+    # 버튼 hover 커서 — QApplication 전역 필터로 모든 QPushButton에 적용
+    _cursor_filter = _BtnCursorFilter(app)
+    app.installEventFilter(_cursor_filter)
 
     # 기본 폰트 설정 (한글 지원)
     font = QFont()
